@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/user/braintumourdetect",
-      "program": "c:/Users/user/braintumourdetect/build/Debug/outDebug",
+      "cwd": "c:/Users/user/braintumourdetect/windows/flutter",
+      "program": "c:/Users/user/braintumourdetect/windows/flutter/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
       "setupCommands": [

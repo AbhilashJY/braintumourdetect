@@ -1,18 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:braintumourdetect/pages/home.dart';
-import 'package:braintumourdetect/pages/profile_page.dart';
-import 'package:flutter/material.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:image_picker/image_picker.dart';
 
-import 'chatbot.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,19 +25,19 @@ class MyApp extends StatelessWidget {
 }
 
 class BrainTumourDetection extends StatefulWidget {
-  const BrainTumourDetection({super.key});
+  const BrainTumourDetection({Key? key}) : super(key: key);
 
   @override
   _BrainTumourDetectionState createState() => _BrainTumourDetectionState();
 }
 
-class _BrainTumourDetectionState extends State<BrainTumourDetection> {
+class _BrainTumourDetectionState extends State
+  with TickerProviderStateMixin {
   File? _imageFile;
-  int _navIndex = 1;
-  final int _selectedIndex = 1;
   final picker = ImagePicker();
+  String _prediction = '';
 
-  Future getImage() async {
+  Future<void> getImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     setState(() {
@@ -49,6 +47,30 @@ class _BrainTumourDetectionState extends State<BrainTumourDetection> {
         print('No image selected.');
       }
     });
+  }
+
+  Future<void> sendImageForPrediction(File imageFile) async {
+    final url = Uri.parse('http://10.0.2.2:5000/predict');
+    var request = http.MultipartRequest('POST', url);
+    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+
+    try {
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        var jsonResponse = json.decode(response.body);
+        setState(() {
+          _prediction = jsonResponse['class_name'];
+        });
+      } else {
+        print('Failed to send image for prediction: ${response.statusCode}');
+        // Handle error response if needed
+      }
+    } catch (e) {
+      print('Error sending image for prediction: $e');
+      // Handle any errors
+    }
   }
 
   @override
@@ -84,71 +106,76 @@ class _BrainTumourDetectionState extends State<BrainTumourDetection> {
             const SizedBox(height: 20.0),
             _imageFile != null
                 ? Column(
-              children: [
-                Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Image.file(
-                    _imageFile!,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 10,),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                        onPressed: clearSelection,
-                        child: Container(
-                            padding: const EdgeInsets.all(5),
-                            width: 60,
-                            decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(10)
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 8.0),
-                              child: Text("Clear",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            )
-                        )
-                    ),
-                    TextButton(
-                        onPressed: () => {},
-                        child: Container(
-                            padding: const EdgeInsets.all(5),
-                            width: 60,
-                            decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(10)
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 8.0),
-                              child: Text("TEST",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            )
-                        )
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10,),
-                Container(
-                  padding: const EdgeInsets.only(left: 15,right: 10,top: 5,bottom: 5),
-                  width: 100,
-                  decoration: const BoxDecoration(
-                    color: Colors.greenAccent,
-
-                  ),
-                  child: const Text("Prediction-"),
-                ),
-              ],
-            )
+                    children: [
+                      Container(
+                        width: 300,
+                        height: 300,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Image.file(
+                          _imageFile!,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 10,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton(
+                              onPressed: clearSelection,
+                              child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  width: 60,
+                                  decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(10)
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 8.0),
+                                    child: Text("Clear",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  )
+                              )
+                          ),
+                          TextButton(
+                              onPressed: () {
+                                if (_imageFile != null) {
+                                  sendImageForPrediction(_imageFile!);
+                                } else {
+                                  print('Please select an image first.');
+                                }
+                              },
+                              child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  width: 60,
+                                  decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      borderRadius: BorderRadius.circular(10)
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 8.0),
+                                    child: Text("TEST",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  )
+                              )
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10,),
+                      Container(
+                        padding: const EdgeInsets.only(left: 15,right: 10,top: 5,bottom: 5),
+                        width: 100,
+                        decoration: const BoxDecoration(
+                          color: Colors.greenAccent,
+                        ),
+                        child: Text("Prediction: $_prediction"),
+                      ),
+                    ],
+                  )
                 : Container(),
             Container(
               child: const TextField(
@@ -159,68 +186,13 @@ class _BrainTumourDetectionState extends State<BrainTumourDetection> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(color: Colors.white, boxShadow: [
-          BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(.1))
-        ]),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-          child: GNav(
-            tabs: [
-              GButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder:
-                      (context) => const Home())
-                  );
-                },
-                icon: Icons.home,
-                text: 'Home',
-              ),
-              GButton(
-                onPressed: () {
-                  // Navigator.push(context, MaterialPageRoute(builder:
-                  //     (context) => const BrainTumourDetection())
-                  // );
-                },
-                icon: Icons.upload,
-                text: 'Upload',
-              ),
-              GButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder:
-                      (context) =>  const ChatBot())
-                  );
-                },
-                icon: Icons.chat_bubble,
-                text: 'Chat',
-              ),
-              GButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder:
-                      (context) => const MyAccount())
-                  );
-                },
-                icon: Icons.person,
-                text: 'Profile',
-              ),
-
-            ],
-            selectedIndex: _navIndex,
-            onTabChange: (index) {
-              setState(() {
-                _navIndex = index;
-              });
-            },
-          ),
-        ),
-      ),
     );
   }
-
 
   void clearSelection() {
     setState(() {
       _imageFile = null;
+      _prediction = '';
     });
   }
 }
